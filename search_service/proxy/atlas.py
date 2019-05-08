@@ -134,19 +134,23 @@ class AtlasProxy(BaseProxy):
 
         sql = f"Table from Table where false"
         count_sql = f"{sql} select count()"
+        insensitive_regex = map(
+            lambda letter: f"[{letter.lower()}{letter.upper()}]"
+            if letter.upper() != letter.lower()
+            else letter, field_value)
         if field_name == 'tag':
             sql = f"from Table where Table is '{field_value}'"
             count_sql = f"{sql} select count()"
         elif field_name == 'schema':
-            sql = f"from Table where db.name like '{field_value}'"
+            sql = f"from Table where db.name like '{insensitive_regex}'"
             count_sql = f"{sql} select count()"
         elif field_name == 'table':
-            sql = f"from Table where name like '{field_value}'"
+            sql = f"from Table where name like '{insensitive_regex}'"
             count_sql = f"{sql} select count()"
         elif field_name == 'column':
-            sql = f"hive_column where name like '{field_value}' select table"
+            sql = f"hive_column where name like '{insensitive_regex}' select table"
             # TODO nanne: count tables instead of columns
-            count_sql = f"hive_column where name like '{field_value}' select count()"
+            count_sql = f"hive_column where name like '{insensitive_regex}' select count()"
 
         LOGGING.debug(f"Used following sql query: {sql}")
         tables: List[Table] = []
@@ -186,11 +190,14 @@ class AtlasProxy(BaseProxy):
         if not query_term:
             # return empty result for blank query term
             return SearchResult(total_results=0, results=[])
+        insensitive_regex = ''.join([f"[{letter.lower()}{letter.upper()}]"
+            if letter.upper() != letter.lower()
+            else letter for letter in query_term])
 
         # define query
         sql = f"Table from Table " \
-            f"where name like '*{query_term}*' or " \
-            f"description like '*{query_term}*' "
+            f"where name like '*{insensitive_regex}*' or " \
+            f"description like '*{insensitive_regex}*' "
 
         # count amount of tables
         count_params = {'query': f"{sql} select count()"}
